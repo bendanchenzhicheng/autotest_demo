@@ -1,110 +1,152 @@
+针对队友自动化测试的总结，重新尝试了一遍，以下是总结，大家可以看一看
+注意：这个demo的前提是已经配置好devise和Rspec，这个demo已经搭建好devise和Rspec
 
-注意：搭建rspec之前，要确保项目里database.yml对测试数据库的配置,即是test环境下数据库的配置
-同时，本人已经把devise搭建好了
+一、安装sport和autotest-rails
+在gemfile中添加
+gem "spork","~>0.9.2"
+gem "autotest-rails","~>4.1.2"
  
-本人在创建这个demo时还犯了一个错，就是rake这个gem没装，这个demo用的是0.8.7版本的rake
-gem 'rake', '~>0.8.7'
+执行 bundle install
  
-一、安装Rspec
-Rspec是一种ruby语言的测试工具，源于warden
+安装spork
+spork --bootstrap
  
-1.在gemfile中添加
-  gem "rspec-rails", "~> 2.11.0"    (目前最新版本为2.11.0）
+输出：
+Using RSpec
+Bootstrapping /home/aaron/code/Rspec_demo/spec/spec_helper.rb.
+Done. Edit /home/aaron/code/Rspec_demo/spec/spec_helper.rb now with your favorite text editor and follow the instructions.
  
-2.执行bundle install
+上面做的就是修改spec/spec_helper.rb文件，在其头部添加了两段方法。Spork.prefork(只在启动时执行一次)和Spork.each_run(每次被RSpec调用时均被执行)。
  
-3.初始化Rspec 
-rails generate rspec:install
-执行 rake -T ，可以找到命名空间spec下的所有命令
+二、修改Rspec配置，实现rspec与spork交互
  
-二、安装Factory_girl
-Factory_girl简介
-    factory_girl是专门用来构造模拟数据的，完美替代Fixture的工具
-        Fixture的缺点很明显，经常要处理各种关联和依赖。如果测试要求的数据量大，还要自己手动制造数据。
-        这些在Factory Girl中都有了好的解决。生成大量数据可以用association来解决对象间的关联，sequence来解决生成大量测试数据的问题
+require 'rubygems'
+require 'spork'
+#uncomment the following line to use spork with the debugger
+#require 'spork/ext/ruby-debug'
  
-1.在gemfile中添加
-  gem "factory_girl_rails", "~>3.5.0"    (目前最新版本为3.5.0）
+Spork.prefork do
+  # Loading more in this block will cause your tests to run faster. However,
+  # if you change any configuration or code from libraries loaded here, you'll
+  # need to restart spork for it take effect.
  
-2.执行bundle install
+  # This file is copied to spec/ when you run 'rails generate rspec:install'
+  
+  ENV["RAILS_ENV"] ||= 'test'
+  require File.expand_path("http://www.cnblogs.com/config/environment", __FILE__)
+  require 'rspec/rails'
+  require 'rspec/autorun'
  
-Github：https://github.com/thoughtbot/factory_girl_rails
-Factory Girl 使用方法汇总： 
-http://rubyer.me/blog/1460/
+  # Requires supporting ruby files with custom matchers and macros, etc,
+  # in spec/support/ and its subdirectories.
+  Dir[Rails.root.join("spec/support/**/*.rb")].each {|f| require f}
  
-group :development, :test do
-  gem "rspec-rails", "~> 2.11.0"
-  gem "factory_girl_rails", "~>3.5.0"
+  RSpec.configure do |config|
+    # ## Mock Framework
+    #
+    # If you prefer to use mocha, flexmock or RR, uncomment the appropriate line:
+    #
+    # config.mock_with :mocha
+    # config.mock_with :flexmock
+    # config.mock_with :rr
+ 
+    # Remove this line if you're not using ActiveRecord or ActiveRecord fixtures
+    config.fixture_path = "#{::Rails.root}/spec/fixtures"
+ 
+    # If you're not using ActiveRecord, or you'd prefer not to run each of your
+    # examples within a transaction, remove the following line or assign false
+    # instead of true.
+    config.use_transactional_fixtures = false
+ 
+    # If true, the base class of anonymous controllers will be inferred
+    # automatically. This will be the default behavior in future versions of
+    # rspec-rails.
+    config.infer_base_class_for_anonymous_controllers = false
+ 
+    # Run specs in random order to surface order dependencies. If you find an
+    # order dependency and want to debug it, you can fix the order by providing
+    # the seed, which is printed after each run.
+    #     --seed 1234
+  config.order = "random"
+ 
 end
  
+Spork.each_run do
+  # This code will be run each time you run your specs.
+  
+  load "#{ Rails.root }/config/routes.rb"
+  Dir["#{ Rails.root }/app/**/**.rb"].each { |f| load f }
  
-三、让devise支持Rspec测试
-在接下来的测试需要添加devise测试支持，否则，所有的controller的方法都没法访问
- 
-　添加文件： ./spec/support/devise.rb，插入以下代码：
-RSpec.configure do |config|
-　 config.include Devise::TestHelpers, :type => :controller
-end
-Now you are ready to use the sign_in and sign_out methods. Such methods have the same signature as in controllers:
-sign_in :user, @user# sign_in(scope, resource)、
-sign_in @user# sign_in(resource)
-sign_out :user# sign_out(scope)
-sign_out @user# sign_out(resource)
- 
-四、测试数据的准备
-添加文件夹./spec/factories
-添加文件user.rb，添加以下内容
- 
-# -*- encoding : utf-8 -*-
-FactoryGirl.define do
-  factory :user do
-    email '123456789@qq.com'
-    password '123456'
-    password_confirmation '123456'
-  end
 end
  
-五、功能性测试
+# --- Instructions ---
+# Sort the contents of this file into a Spork.prefork and a Spork.each_run
+# block.
+#
+# The Spork.prefork block is run only once when the spork server is started.
+# You typically want to place most of your (slow) initializer code in here, in
+# particular, require'ing any 3rd-party gems that you don't normally modify
+# during development.
+#
+# The Spork.each_run block is run each time you run your specs.  In case you
+# need to load files that tend to change during development, require them here.
+# With Rails, your application modules are loaded automatically, so sometimes
+# this block can remain empty.
+#
+# Note: You can modify files loaded *from* the Spork.each_run block without
+# restarting the spork server.  However, this file itself will not be reloaded,
+# so if you change any of the code inside the each_run block, you still need to
+# restart the server.  In general, if you have non-trivial code in this file,
+# it's advisable to move it into a separate file so you can easily edit it
+# without restarting spork.  (For example, with RSpec, you could move
+# non-trivial code into a file spec/support/my_helper.rb, making sure that the
+# spec/support/* files are require'd from inside the each_run block.)
+#
+# Any code that is left outside the two blocks will be run during preforking
+# *and* during each_run -- that's probably not what you want.
+#
+# These instructions should self-destruct in 10 seconds.  If they don't, feel
+# free to delete them.
  
-添加文件./spec/contorller/user_controller_spec.rb
-添加以下内容
- 
-# -*- encoding : utf-8 -*-
-require "spec_helper"
- 
-describe HomeController do
-  before(:each) do #每次请求之前都先登录，不然会被devise拒绝
-    @user=FactoryGirl.create(:user)
-    sign_in @user
-  end
- 
-  describe "GET index" do
-    it "shoule be successful" do
-      get 'index'
-      response.should be_success
-    end
-  end
 end
  
-以上是测试描述语言，要详细学学，内容并不多
+三、告诉Rspec我们使用spork
+　修改rspec配置文件(your_app/.rspec)，告诉它我们用的是spork，添加代码：
+--drb
+　　一般修改后完整的代码为：
+--colour
+--drb
+四、此时RSpec与Spork即可完美结合了
+启动Spork方法
  
-六、测试
-执行： rake spec:controllers
+Spork
+执行RSpec方法
  
-效果：
-(in /home/aaron/code/devise_demo)
-/home/aaron/.rvm/rubies/ruby-1.9.2-p290/bin/ruby -S rspec ./spec/controllers/user_controller_spec.rb
-.
+rspec spec
+此时会发现RSpec执行时间明显缩短了。但如果通过执行”rake”来启动RSpec，仍然会很慢，这是因为rake启动时会加载工程环境，为所有tasks做准备。
  
-Finished in 0.30821 seconds
-1 example, 0 failures
+五、添加Autotest自动执行测试
+启动Autotest
  
-Randomized with seed 27530
+autotest
+Autotest就会自动启动，并监听文件变化，一旦改变，会立即执行改变部分相关的测试。
+添加Autotest是最简单的，这是因为RSpec内部已经添加了对Autotest的一些支持，也是Rspec Rails推荐的做法。
+简单也有一些问题，如Autotest自定义性不强，不够灵活。如果你追求自定义那就用Guard吧。
  
-七.Rspec加载环境，运行的原理
-目前本人的理解:
-大家可以看看./spec/spec_helper.rb,可以看到Rspec先去加载rails项目的environment环境配置
-然后去加载./spec/support文件下的配置
-刚刚我们在./spec/controllers的文件下用sign_in先进行登录，就要先在./spec/support/devise.rb先把devise引进来，
-不然就用不了devise方法。
-另外，Rspec还会去加载其它的配置。
+六、注意
+此时当你修改app/models/person.rb时，可能并不会自动执行RSpec测试，这是因为Rails 的test环境默认对class做了缓存。
+修改“config/environments/test.rb”
+1
+2
+3
+#config/environments/test.rb
+#config.cache_classes = true #change this line to
+config.cache_classes = false
+ 
+七、参考文献
+参考文献
+　　Factory Girl 使用方法的一些汇总：http://rubyer.me/blog/1460/
+　　Devise：https://github.com/plataformatec/devise
+　　RspecRails：https://github.com/rspec/rspec-rails
+　　Rails3-Devise-Rspec-cucumber 例子：https://github.com/RailsApps/rails3-devise-rspec-cucumber
+　　rspec+spork+autotest：http://rubyer.me/blog/1477/
