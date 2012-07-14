@@ -102,6 +102,7 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  ZenTest (~> 4.8.1)
   autotest-rails (~> 4.1.2)
   devise
   factory_girl_rails (~> 3.5.0)

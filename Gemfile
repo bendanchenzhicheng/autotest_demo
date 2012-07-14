@@ -14,6 +14,7 @@ group :development, :test do
   gem "factory_girl_rails", "~>3.5.0"
   gem "spork", "~>0.9.2"
   gem "autotest-rails","~>4.1.2"
+  gem "ZenTest","~>4.8.1"
 end
 
 gem "hirb","~>0.7.0"
