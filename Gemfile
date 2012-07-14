@@ -12,6 +12,8 @@ gem 'devise'
 group :development, :test do
   gem "rspec-rails", "~> 2.11.0"
   gem "factory_girl_rails", "~>3.5.0"
+  gem "spork", "~>0.9.2"
+  gem "autotest-rails","~>4.1.2"
 end
 
 gem "hirb","~>0.7.0"
