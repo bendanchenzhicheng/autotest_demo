@@ -1,76 +1,110 @@
-github: https://github.com/plataformatec/devise
-http://www.haojii.com/category/ruby-on-rails/
 
-进入项目
-
-1、添加gem
-    gem 'devise'
-
-2、更新本地gem
-    bundle install
-3、创建页面
-    rails g controller home index
-4、初始化devise
-    rails g devise:install
-会有如下提示：
-  1. Setup default url options for your specific environment. Here is an
-     example of development environment:
-
-       config.action_mailer.default_url_options = { :host => 'localhost:3000' }
-
-     This is a required Rails configuration. In production it must be the
-     actual host of your application
-
-  2. Ensure you have defined root_url to *something* in your config/routes.rb.
-     For example:
-
-       root :to => "home#index"
-
-  3. Ensure you have flash messages in app/views/layouts/application.html.erb.
-     For example:
-
-       <p class="notice"><%= notice %></p>
-       <p class="alert"><%= alert %></p>
-
-  4. If you are deploying Rails 3.1 on Heroku, you may want to set:
-
-       config.assets.initialize_on_precompile = false
-
-     On config/application.rb forcing your application to not access the DB
-     or load models when precompiling your assets.
-
-进行相关配置
-5、与模型User关联
-    rails g devise User
-这条命令会生成一个user.rb model文件，一个migration文件和一个devise_for的路由
-我们可以看到User model和普通的ActiveRecord的区别并不大，主要的差别是调用了devise方法，当然这也是配置的关键。Devise方法有很多的参数用来标识是否使用对应的功能模块
-
-
-6.执行迁移任务
-rake db:migrate
-查看在router.rb文件中的devise_for都产生了什么路由.可以通过rake routes查看
-
-产生了如下路由：登录，登出，重置密码，注册，和修改。如果我们需要，所有这些路由都是可以配置的
-
-7、修改默认访问url
-    打开routes.rb,加入：root :to => "home#index"
-
-8、修改index.html.erb代码
-<% if user_signed_in? -%> <!-- Provided by devise -->
-    <div style="float:right">
-      <%= current_user.email %> |
-      <%= link_to '用户信息', edit_user_registration_path %> |
-      <%= link_to '退出登录', destroy_user_session_path, :method => :delete %> |
-    </div>
-    <% end -%>
-    <% unless user_signed_in? -%>
-    <div style="float:right">
-      <%= link_to '注册', new_user_registration_path %> |
-      <%= link_to '登录', new_user_session_path %>
-    </div>
-<% end -%>
-9、启动服务
-    rails s
-10、测试
-    localhost:3000/home/index
-
+注意：搭建rspec之前，要确保项目里database.yml对测试数据库的配置,即是test环境下数据库的配置
+同时，本人已经把devise搭建好了
+ 
+本人在创建这个demo时还犯了一个错，就是rake这个gem没装，这个demo用的是0.8.7版本的rake
+gem 'rake', '~>0.8.7'
+ 
+一、安装Rspec
+Rspec是一种ruby语言的测试工具，源于warden
+ 
+1.在gemfile中添加
+  gem "rspec-rails", "~> 2.11.0"    (目前最新版本为2.11.0）
+ 
+2.执行bundle install
+ 
+3.初始化Rspec 
+rails generate rspec:install
+执行 rake -T ，可以找到命名空间spec下的所有命令
+ 
+二、安装Factory_girl
+Factory_girl简介
+    factory_girl是专门用来构造模拟数据的，完美替代Fixture的工具
+        Fixture的缺点很明显，经常要处理各种关联和依赖。如果测试要求的数据量大，还要自己手动制造数据。
+        这些在Factory Girl中都有了好的解决。生成大量数据可以用association来解决对象间的关联，sequence来解决生成大量测试数据的问题
+ 
+1.在gemfile中添加
+  gem "factory_girl_rails", "~>3.5.0"    (目前最新版本为3.5.0）
+ 
+2.执行bundle install
+ 
+Github：https://github.com/thoughtbot/factory_girl_rails
+Factory Girl 使用方法汇总： 
+http://rubyer.me/blog/1460/
+ 
+group :development, :test do
+  gem "rspec-rails", "~> 2.11.0"
+  gem "factory_girl_rails", "~>3.5.0"
+end
+ 
+ 
+三、让devise支持Rspec测试
+在接下来的测试需要添加devise测试支持，否则，所有的controller的方法都没法访问
+ 
+　添加文件： ./spec/support/devise.rb，插入以下代码：
+RSpec.configure do |config|
+　 config.include Devise::TestHelpers, :type => :controller
+end
+Now you are ready to use the sign_in and sign_out methods. Such methods have the same signature as in controllers:
+sign_in :user, @user# sign_in(scope, resource)、
+sign_in @user# sign_in(resource)
+sign_out :user# sign_out(scope)
+sign_out @user# sign_out(resource)
+ 
+四、测试数据的准备
+添加文件夹./spec/factories
+添加文件user.rb，添加以下内容
+ 
+# -*- encoding : utf-8 -*-
+FactoryGirl.define do
+  factory :user do
+    email '123456789@qq.com'
+    password '123456'
+    password_confirmation '123456'
+  end
+end
+ 
+五、功能性测试
+ 
+添加文件./spec/contorller/user_controller_spec.rb
+添加以下内容
+ 
+# -*- encoding : utf-8 -*-
+require "spec_helper"
+ 
+describe HomeController do
+  before(:each) do #每次请求之前都先登录，不然会被devise拒绝
+    @user=FactoryGirl.create(:user)
+    sign_in @user
+  end
+ 
+  describe "GET index" do
+    it "shoule be successful" do
+      get 'index'
+      response.should be_success
+    end
+  end
+end
+ 
+以上是测试描述语言，要详细学学，内容并不多
+ 
+六、测试
+执行： rake spec:controllers
+ 
+效果：
+(in /home/aaron/code/devise_demo)
+/home/aaron/.rvm/rubies/ruby-1.9.2-p290/bin/ruby -S rspec ./spec/controllers/user_controller_spec.rb
+.
+ 
+Finished in 0.30821 seconds
+1 example, 0 failures
+ 
+Randomized with seed 27530
+ 
+七.Rspec加载环境，运行的原理
+目前本人的理解:
+大家可以看看./spec/spec_helper.rb,可以看到Rspec先去加载rails项目的environment环境配置
+然后去加载./spec/support文件下的配置
+刚刚我们在./spec/controllers的文件下用sign_in先进行登录，就要先在./spec/support/devise.rb先把devise引进来，
+不然就用不了devise方法。
+另外，Rspec还会去加载其它的配置。
